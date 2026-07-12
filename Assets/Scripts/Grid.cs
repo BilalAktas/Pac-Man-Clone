@@ -4,15 +4,8 @@ namespace Core
 {
     public class Grid : Singleton<Grid>
     {
-        
 		private Node[,] _grid;
-        [SerializeField] private Vector2Int _gridSize;
-        [SerializeField] private Vector2 _boxNodeSize;
-        [SerializeField] private GameObject _nodePrefab;
-        [SerializeField] private Vector3 _worldPositionOffset;
-
-        [SerializeField] private GameObject _pacmanPrefab;
-        private int _spawnAmount;
+        [SerializeField] private WallLevelDesignData _currentLevelDesignData;
         
         private void Start()
         {
@@ -22,26 +15,47 @@ namespace Core
         private void CreateGrid()
         {
             _grid = Helpers.CreateGrid(
-                _gridSize,
+                _currentLevelDesignData.GridSize,
                 origin: Vector3.zero,
-                nodeSize: _boxNodeSize,
-                worldOffset: _worldPositionOffset,
+                nodeSize: _currentLevelDesignData.NodeSize,
+                worldOffset: _currentLevelDesignData.WorldPositionOffset,
                 createNode: (worldPos, gridPos) =>
                 {
-                    var clone = Instantiate(_nodePrefab, transform);
+                    var clone = Instantiate(_currentLevelDesignData.NodePrefab, transform);
                     clone.transform.localPosition = worldPos;
 
-                    return new Node(worldPos, gridPos);
+                    return new Node(worldPos, gridPos, clone);
                 },
                 afterCreate: (node, worldPos, gridPos) =>
                 {
-      
-                    if (_spawnAmount == 0)
+                    if (_currentLevelDesignData.PlayerSpawnCell.x == gridPos.x && _currentLevelDesignData.PlayerSpawnCell.y == gridPos.y)
                     {
-                        var clone = Instantiate(_pacmanPrefab, transform);
+                        var clone = Instantiate(_currentLevelDesignData.PacmanPrefab, transform);
                         clone.transform.localPosition = worldPos;
-                        node.SetCharacter(clone.GetComponent<Character>());
-                        _spawnAmount++;
+                        var character = clone.GetComponent<Character>();
+                        character.SetNode(node);
+                    }
+
+                    if (_currentLevelDesignData.IsPointSpawn(gridPos.x, gridPos.y))
+                    {
+                        var clone = Instantiate(_currentLevelDesignData.PointPrefab, transform);
+                        clone.transform.localPosition = worldPos;
+                        node.SetCollectable(clone.GetComponentInChildren<ICollectable>());
+                    }
+                    
+                    if (_currentLevelDesignData.IsEnemySpawn(gridPos.x, gridPos.y))
+                    {
+                        var clone = Instantiate(_currentLevelDesignData.EnemyPrefab, transform);
+                        clone.transform.localPosition = worldPos;
+                        clone.GetComponent<Character>().SetNode(node);
+                    }
+                    
+                    var wall = _currentLevelDesignData.IsWallCell(gridPos.x, gridPos.y);
+                    if (wall.Type != WallType.Empty)
+                    {
+                        var clone = Instantiate(wall.Type == WallType.WallA ? _currentLevelDesignData.WallPrefabA : _currentLevelDesignData.WallPrefabB, transform);
+                        clone.transform.localPosition = worldPos;
+                        node.SetWall();
                     }
                 }
             );
@@ -115,7 +129,7 @@ namespace Core
         }
         
         private bool IsPositionInBound(Vector2Int pos)
-            => pos.x >= 0 && pos.x < _gridSize.x && pos.y >= 0 && pos.y < _gridSize.y;
+            => pos.x >= 0 && pos.x < _currentLevelDesignData.GridSize.x && pos.y >= 0 && pos.y < _currentLevelDesignData.GridSize.y;
         
         public bool IsNodeClear(Vector2Int pos) => !_grid[pos.x, pos.y].Character;
         

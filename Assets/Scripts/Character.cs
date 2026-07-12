@@ -9,7 +9,7 @@ namespace Core
         private Animator _anim;
         private CharacterState _state;
 
-        protected CharacterState State
+        public CharacterState State
         {
             get { return _state; }
             set
@@ -24,21 +24,20 @@ namespace Core
             _anim = GetComponent<Animator>();
         }
 
-        protected bool _moving;
-        protected Vector3 _startPosition;
-        protected Node _nextNode;
+        [HideInInspector] public bool Moving;
+        [HideInInspector] public Vector3 StartPosition;
+        [HideInInspector] public Node NextNode;
         private float _moveTimer;
         [SerializeField] private float _moveSpeed;
 
         public Node CurrentNode {get; private set;}
         
-        
-        protected void Move()
+        public void Move()
         {
             _moveTimer += Time.deltaTime;
             var progress = Mathf.Clamp01(_moveTimer / _moveSpeed);
-            transform.position = Vector3.Lerp(_startPosition, _nextNode.WorldPosition, progress);
-            transform.right = _nextNode.WorldPosition - _startPosition;
+            transform.position = Vector3.Lerp(StartPosition, NextNode.WorldPosition, progress);
+            transform.right = NextNode.WorldPosition - StartPosition;
             
             //Debug.Log($"st {_startPosition}  --  tp {_nextPosition}");
             
@@ -50,12 +49,12 @@ namespace Core
 
         private void OnCompleteMove()
         {
-            _moving = false;
+            Moving = false;
             _moveTimer = 0;
-            SetNode(_nextNode);
+            SetNode(NextNode);
         }
 
-        private void SetNode(Node node)
+        public void SetNode(Node node)
         {
             CurrentNode?.SetCharacter(null);
             CurrentNode = node;
