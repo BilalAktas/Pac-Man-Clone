@@ -30,20 +30,12 @@ namespace Core
                 {
                     var clone = Instantiate(_nodePrefab, transform);
                     clone.transform.localPosition = worldPos;
-                    //_spawnedNodes.Add(clone);
 
                     return new Node(worldPos, gridPos);
                 },
                 afterCreate: (node, worldPos, gridPos) =>
                 {
-                    // var clone = Instantiate(_currentLevelDesignData.BoxPrefab, transform);
-                    // var rp = _currentLevelDesignData.GetPropertyByColor(color);
-                    // var box = clone.GetComponent<Box>();
-                    // box.enabled = true;
-                    // clone.transform.localPosition = worldPos;
-                    // box.SetProperties(rp, node, LevelManager.Instance.CurrentLevelDesignData.GetBoxCapacity(gridPos.x,gridPos.y));
-                    // node.SetBox(box);
-                    // _spawnedBoxes.Add(box.gameObject);
+      
                     if (_spawnAmount == 0)
                     {
                         var clone = Instantiate(_pacmanPrefab, transform);
