@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace Core
 {
@@ -6,6 +7,14 @@ namespace Core
     {
 		private Node[,] _grid;
         [SerializeField] private WallLevelDesignData _currentLevelDesignData;
+        
+        private static readonly Dictionary<MoveDirection, Vector2Int> _directionOffsets = new()
+        {
+            { MoveDirection.Up,    new Vector2Int(0, 1) },
+            { MoveDirection.Down,  new Vector2Int(0, -1) },
+            { MoveDirection.Left,  new Vector2Int(-1, 0) },
+            { MoveDirection.Right, new Vector2Int(1, 0) },
+        };
         
         private void Start()
         {
@@ -61,77 +70,53 @@ namespace Core
             );
         }
 
-        public Node GetNodeByDirection(Vector3 currentPosition, MoveDirection dir)
+        public Node GetNodeByDirection(Node currentNode, MoveDirection dir)
         {
-            switch (dir)
-            {
-                case MoveDirection.Up:
-                    foreach (var node in _grid)
-                    {
-                        if (node.WorldPosition == currentPosition)
-                        {
-                            var p = new Vector2Int(node.GridPosition.x, node.GridPosition.y + 1);
-                            if (IsPositionInBound(p))
-                            {
-                                var nextNode = _grid[p.x, p.y];
-                                return nextNode;
-                            }
-                        }
-                    }
-                    break;
-                case MoveDirection.Down:
-                    foreach (var node in _grid)
-                    {
-                        if (node.WorldPosition == currentPosition)
-                        {
-                            var p = new Vector2Int(node.GridPosition.x, node.GridPosition.y - 1);
-                            if (IsPositionInBound(p))
-                            {
-                                var nextNode = _grid[p.x, p.y];
-                                return nextNode;
-                            }
-                        }
-                    }
-                    break;
-                
-                case MoveDirection.Left:
-                    foreach (var node in _grid)
-                    {
-                        if (node.WorldPosition == currentPosition)
-                        {
-                            var p = new Vector2Int(node.GridPosition.x - 1, node.GridPosition.y);
-                            if (IsPositionInBound(p))
-                            {
-                                var nextNode = _grid[p.x, p.y];
-                                return nextNode;
-                            }
-                        }
-                    }
-                    break;
-                
-                case MoveDirection.Right:
-                    foreach (var node in _grid)
-                    {
-                        if (node.WorldPosition == currentPosition)
-                        {
-                            var p = new Vector2Int(node.GridPosition.x + 1, node.GridPosition.y);
-                            if (IsPositionInBound(p))
-                            {
-                                var nextNode = _grid[p.x, p.y];
-                                return nextNode;
-                            }
-                        }
-                    }
-                    break;
-            }
-
-            return null;
+            var offset = _directionOffsets[dir];
+            var p = new Vector2Int(currentNode.GridPosition.x + offset.x, currentNode.GridPosition.y + offset.y);
+            return IsPositionInBound(p) ? _grid[p.x, p.y] : null;
         }
         
         private bool IsPositionInBound(Vector2Int pos)
             => pos.x >= 0 && pos.x < _currentLevelDesignData.GridSize.x && pos.y >= 0 && pos.y < _currentLevelDesignData.GridSize.y;
         
         public bool IsNodeClear(Vector2Int pos) => !_grid[pos.x, pos.y].Character;
+
+        public List<Node> GetAllNodesByDirection(MoveDirection dir, int distance, Node baseNode)
+        {
+            var nodes = new List<Node>();
+            var offset = _directionOffsets[dir];
+
+            var x = baseNode.GridPosition.x + offset.x;
+            var y = baseNode.GridPosition.y + offset.y;
+
+            for (var i = 0; i < distance && IsPositionInBound(new Vector2Int(x, y)); i++)
+            {
+                var node = _grid[x, y];
+
+                if (!node.IsWalkable)
+                    break;
+
+                nodes.Add(node);
+
+                x += offset.x;
+                y += offset.y;
+            }
+
+            return nodes;
+        }
         
+        public MoveDirection GetDirectionBetweenNodes(Node from, Node to)
+        {
+            var dx = to.GridPosition.x - from.GridPosition.x;
+            var dy = to.GridPosition.y - from.GridPosition.y;
+
+            if (dx == 0 && dy == 1) return MoveDirection.Up;
+            if (dx == 0 && dy == -1) return MoveDirection.Down;
+            if (dx == -1 && dy == 0) return MoveDirection.Left;
+            if (dx == 1 && dy == 0) return MoveDirection.Right;
+
+            return MoveDirection.None;
+        }
     }
 }

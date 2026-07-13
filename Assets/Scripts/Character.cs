@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Core
 {
@@ -8,18 +7,17 @@ namespace Core
         private static readonly int _stateId = Animator.StringToHash("State");
         private Animator _anim;
         private CharacterState _state;
-
         public CharacterState State
         {
             get { return _state; }
             set
             {
                 _state = value;
-                _anim.SetInteger(_stateId, (int)value);
+                _anim?.SetInteger(_stateId, (int)value);
             }
         }
-        
-        private void Start()
+
+        private void Awake()
         {
             _anim = GetComponent<Animator>();
         }
@@ -27,20 +25,37 @@ namespace Core
         [HideInInspector] public bool Moving;
         [HideInInspector] public Vector3 StartPosition;
         [HideInInspector] public Node NextNode;
+        [HideInInspector] public CharacterType CharacterType;
         private float _moveTimer;
-        [SerializeField] private float _moveSpeed;
+        private float _moveSpeed;
+        public void SetMoveSpeed(float speed) => _moveSpeed = speed;
 
-        public Node CurrentNode {get; private set;}
-        
+        public Node CurrentNode { get; private set; }
+
+
+        public bool TryMoveInDirection(MoveDirection dir)
+        {
+            if (dir == MoveDirection.None)
+                return false;
+
+            var node = Grid.Instance.GetNodeByDirection(CurrentNode, dir);
+            if (node == null || !node.IsWalkable)
+                return false;
+
+            StartPosition = CurrentNode.WorldPosition;
+            NextNode = node;
+            Moving = true;
+            State = CharacterState.Moving;
+            return true;
+        }
+
         public void Move()
         {
             _moveTimer += Time.deltaTime;
             var progress = Mathf.Clamp01(_moveTimer / _moveSpeed);
             transform.position = Vector3.Lerp(StartPosition, NextNode.WorldPosition, progress);
-            transform.right = NextNode.WorldPosition - StartPosition;
-            
-            //Debug.Log($"st {_startPosition}  --  tp {_nextPosition}");
-            
+            if(CharacterType == CharacterType.Pacman) transform.right = NextNode.WorldPosition - StartPosition;
+
             if (progress >= 1f)
             {
                 OnCompleteMove();

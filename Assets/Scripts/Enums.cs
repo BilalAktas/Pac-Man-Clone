@@ -14,6 +14,12 @@
         Idle,
         Moving
     }
+
+    public enum CharacterType
+    {
+        Pacman,
+        Ghost
+    }
     
     public class Enums
     {

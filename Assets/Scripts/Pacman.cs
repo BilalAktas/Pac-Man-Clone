@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Core
@@ -9,6 +8,7 @@ namespace Core
         private MoveDirection _targetMoveDirection;
         private MoveDirection _currentMoveDirection;
         private Transform _dirArrow;
+        private Node _lastTrackedNode;
 
         private void GetDirectionByInput()
         {
@@ -22,70 +22,63 @@ namespace Core
                 _targetMoveDirection = MoveDirection.Right;
         }
 
-        
         private void OnEnable()
         {
+            CharacterType = CharacterType.Pacman;
+            SetMoveSpeed(.15f);
             _dirArrow = transform.GetChild(0);
         }
 
         private void Update()
         {
-            if(CurrentNode.Collectable != null)
-                CurrentNode.Collect();
-            
-            GetDirectionByInput();
-
-            switch (_targetMoveDirection)
+            if (CurrentNode != _lastTrackedNode)
             {
-                case MoveDirection.Up:
-                    _dirArrow.rotation = Quaternion.Euler(0,0,90);
-                    break;
-                case MoveDirection.Down:
-                    _dirArrow.rotation = Quaternion.Euler(0,0,270);
-                    break;
-                case MoveDirection.Left:
-                    _dirArrow.rotation = Quaternion.Euler(0,0,180);
-                    break;
-                case MoveDirection.Right:
-                    _dirArrow.rotation = Quaternion.Euler(0,0,0);
-                    break;
+                _lastTrackedNode = CurrentNode;
+                EventBus.Raise(new OnPacmanNodeChangedEvent { Node = CurrentNode });
             }
-            
+
+            if (CurrentNode.Collectable != null)
+                CurrentNode.Collect();
+
+            GetDirectionByInput();
+            UpdateArrowRotation();
+
             if (Moving)
             {
                 Move();
+                return;
             }
-            else
+
+            if (_targetMoveDirection == MoveDirection.None)
+                return;
+            
+            if (TryMoveInDirection(_targetMoveDirection))
             {
-                if (_targetMoveDirection != MoveDirection.None)
-                {
-                    StartPosition = CurrentNode.WorldPosition;
-                    var node = Grid.Instance.GetNodeByDirection(CurrentNode.WorldPosition, _targetMoveDirection);
-                    if (node!=null && node.IsWalkable)
-                    {
-                        NextNode = Grid.Instance.GetNodeByDirection(CurrentNode.WorldPosition, _targetMoveDirection);
-                        _currentMoveDirection = _targetMoveDirection;
-                    }
-                    else
-                        NextNode = Grid.Instance.GetNodeByDirection(CurrentNode.WorldPosition, _currentMoveDirection);
-                    
-                    if (NextNode == null)
-                    {
-                        _targetMoveDirection = MoveDirection.None;
-                        State = CharacterState.Idle;
-                        return;
-                    }
+                _currentMoveDirection = _targetMoveDirection;
+            }
+            else if (!TryMoveInDirection(_currentMoveDirection))
+            {
+                _targetMoveDirection = MoveDirection.None;
+                State = CharacterState.Idle;
+            }
+        }
 
-                    if (!NextNode.IsWalkable)
-                    {
-                        _targetMoveDirection = MoveDirection.None;
-                        State = CharacterState.Idle;
-                        return;
-                    }
-
-                    State = CharacterState.Moving;
-                    Moving = true;
-                }
+        private void UpdateArrowRotation()
+        {
+            switch (_targetMoveDirection)
+            {
+                case MoveDirection.Up:
+                    _dirArrow.rotation = Quaternion.Euler(0, 0, 90);
+                    break;
+                case MoveDirection.Down:
+                    _dirArrow.rotation = Quaternion.Euler(0, 0, 270);
+                    break;
+                case MoveDirection.Left:
+                    _dirArrow.rotation = Quaternion.Euler(0, 0, 180);
+                    break;
+                case MoveDirection.Right:
+                    _dirArrow.rotation = Quaternion.Euler(0, 0, 0);
+                    break;
             }
         }
     }

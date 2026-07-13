@@ -9,10 +9,11 @@ namespace Core
         }
 
         private MoveDirection _currentMoveDirection;
-        
+
         public override void Enter()
         {
             _currentMoveDirection = (MoveDirection)Random.Range(1, 5);
+            Ghost.SetColor();
         }
 
         public override void Update()
@@ -20,37 +21,26 @@ namespace Core
             if (Ghost.Moving)
             {
                 Ghost.Move();
+                Ghost.CurrentDirection = _currentMoveDirection;
+                return;
             }
-            else
+
+            if (!Ghost.TryMoveInDirection(_currentMoveDirection))
             {
-                if (_currentMoveDirection != MoveDirection.None)
+                _currentMoveDirection = (MoveDirection)Random.Range(1, 5);
+                return;
+            }
+
+            var nodes = Grid.Instance.GetAllNodesByDirection(_currentMoveDirection, 5, Ghost.CurrentNode);
+            for (var i = 0; i < nodes.Count; i++)
+            {
+                if (nodes[i].Character && nodes[i].Character.CharacterType == CharacterType.Pacman)
                 {
-                    Debug.Log($"g {Ghost.transform.name}");
-                    Ghost.StartPosition = Ghost.CurrentNode.WorldPosition;
-                    var node = Grid.Instance.GetNodeByDirection(Ghost.CurrentNode.WorldPosition, _currentMoveDirection);
-                    if (node!=null && node.IsWalkable)
-                    {
-                        Ghost.NextNode = Grid.Instance.GetNodeByDirection(Ghost.CurrentNode.WorldPosition, _currentMoveDirection);
-                    }
-                    else
-                    {
-                        _currentMoveDirection = (MoveDirection)Random.Range(1, 5);
-                    }
-                    
-                    if (Ghost.NextNode == null)
-                    {
-                        //Ghost.State = CharacterState.Idle;
-                        return;
-                    }
+                    Ghost.ChangeState(GhostStateEnum.Follow);
+                    if (Ghost.StateMachine.GetState(GhostStateEnum.Follow) is GhostFollowState followState)
+                        followState.GetCurrentPath(nodes.GetRange(0, i + 1));
 
-                    if (!Ghost.NextNode.IsWalkable)
-                    {
-                      //  Ghost.State = CharacterState.Idle;
-                        return;
-                    }
-
-                    //Ghost.State = CharacterState.Moving;
-                    Ghost.Moving = true;
+                    return;
                 }
             }
         }

@@ -275,7 +275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1cf96e829564e248767882c86202862, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Core.Grid
-  _currentLevelDesignData: {fileID: 11400000, guid: 6102b0f63bb09ea48bc5081eb0433e8d, type: 2}
+  _currentLevelDesignData: {fileID: 11400000, guid: 6074057d377f4124aba1033170b0297e, type: 2}
 --- !u!4 &273602153
 Transform:
   m_ObjectHideFlags: 0
