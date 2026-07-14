@@ -3,9 +3,9 @@ using UnityEngine;
 
 namespace Core
 {
-    public class GhostFollowState : GhostState
+    public class GhostChaseState : GhostState
     {
-        public GhostFollowState(Ghost ghost) : base(ghost)
+        public GhostChaseState(Ghost ghost) : base(ghost)
         {
         }
 
@@ -22,8 +22,11 @@ namespace Core
             _trail.Clear();
             _currentTarget = null;
             _followTimer = 0;
-            EventBus.Subscribe<OnPacmanNodeChangedEvent>(OnPacmanNodeChanged);
             _baseColor = Ghost.GetRenderer.color;
+            
+            EventBus.Subscribe<OnPacmanNodeChangedEvent>(OnPacmanNodeChanged);
+            EventBus.Subscribe<OnCollectPowerPelletEvent>(OnPowerPelletCollected);
+
         }
 
         public void GetCurrentPath(List<Node> nodes)
@@ -34,6 +37,11 @@ namespace Core
         private void OnPacmanNodeChanged(OnPacmanNodeChangedEvent e)
         {
             _trail.Enqueue(e.Node);
+        }
+
+        private void OnPowerPelletCollected(OnCollectPowerPelletEvent e)
+        {
+            Ghost.ChangeState(GhostStateEnum.Frightened);
         }
         
         public override void Update()
@@ -51,7 +59,7 @@ namespace Core
             
             if (_followTimer >= Ghost.Config.FollowDuration)
             {
-                Ghost.ChangeState(GhostStateEnum.Idle);
+                Ghost.ChangeState(GhostStateEnum.Patrol);
                 return;
             }
             
@@ -93,6 +101,7 @@ namespace Core
         public override void Exit()
         {
             EventBus.Unsubscribe<OnPacmanNodeChangedEvent>(OnPacmanNodeChanged);
+            EventBus.Unsubscribe<OnCollectPowerPelletEvent>(OnPowerPelletCollected);
             _trail.Clear();
         }
     }

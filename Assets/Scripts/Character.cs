@@ -19,16 +19,18 @@ namespace Core
 
         private void Awake()
         {
+            _renderer = GetComponent<SpriteRenderer>();
             _anim = GetComponent<Animator>();
         }
-
+        private SpriteRenderer _renderer;
+        public SpriteRenderer GetRenderer => _renderer;
         [HideInInspector] public bool Moving;
         [HideInInspector] public Vector3 StartPosition;
         [HideInInspector] public Node NextNode;
         [HideInInspector] public CharacterType CharacterType;
         private float _moveTimer;
         private float _moveSpeed;
-        public void SetMoveSpeed(float speed) => _moveSpeed = speed;
+        protected void SetMoveSpeed(float speed) => _moveSpeed = speed;
 
         public Node CurrentNode { get; private set; }
 
@@ -71,9 +73,10 @@ namespace Core
 
         public void SetNode(Node node)
         {
-            CurrentNode?.SetCharacter(null);
+            CurrentNode?.RemoveCharacter(this);
             CurrentNode = node;
-            CurrentNode.SetCharacter(this);
+            CurrentNode?.AddCharacter(this);
         }
+        
     }
 }

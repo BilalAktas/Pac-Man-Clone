@@ -4,8 +4,9 @@ namespace Core
 {
     public enum GhostStateEnum
     {
-        Idle,
-        Follow,
+        Patrol,
+        Chase,
+        Frightened,
         Die
     }
 

@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Core
@@ -9,6 +10,7 @@ namespace Core
         private MoveDirection _currentMoveDirection;
         private Transform _dirArrow;
         private Node _lastTrackedNode;
+        private bool _inBattle;
 
         private void GetDirectionByInput()
         {
@@ -27,6 +29,34 @@ namespace Core
             CharacterType = CharacterType.Pacman;
             SetMoveSpeed(.15f);
             _dirArrow = transform.GetChild(0);
+
+            EventBus.Subscribe<OnBattleFinishedEvent>(OnBattleFinished);
+        }
+
+        private void OnDisable()
+        {
+            EventBus.Unsubscribe<OnBattleFinishedEvent>(OnBattleFinished);
+        }
+
+        private void OnBattleFinished(OnBattleFinishedEvent e)
+        {
+            //if (e.Node.GridPosition != CurrentNode.GridPosition) return;
+
+            _inBattle = false;
+
+            if (e.Winner != this)
+            {
+                SetNode(null);
+                Time.timeScale = 0f;
+            }
+            else
+            {
+           
+                EventBus.Raise(new OnCollectPointEvent()
+                {
+                    PointAmount = 200
+                });
+            }
         }
 
         private void Update()
@@ -40,6 +70,8 @@ namespace Core
             if (CurrentNode.Collectable != null)
                 CurrentNode.Collect();
 
+            CheckGhostCollision();
+
             GetDirectionByInput();
             UpdateArrowRotation();
 
@@ -51,7 +83,7 @@ namespace Core
 
             if (_targetMoveDirection == MoveDirection.None)
                 return;
-            
+
             if (TryMoveInDirection(_targetMoveDirection))
             {
                 _currentMoveDirection = _targetMoveDirection;
@@ -61,6 +93,31 @@ namespace Core
                 _targetMoveDirection = MoveDirection.None;
                 State = CharacterState.Idle;
             }
+        }
+
+        private void CheckGhostCollision()
+        {
+            if (_inBattle) return;
+
+            if (CurrentNode != null)
+            {
+                foreach (var character in CurrentNode.Characters)
+                {
+                    if (character.CharacterType == CharacterType.Ghost)
+                    {
+                        _inBattle = true;
+                        EventBus.Raise(new OnBattleStartedEvent
+                        {
+                            Pacman = this,
+                            Ghost = character,
+                            Node = CurrentNode
+                        });
+
+                        break;
+                    }
+                }
+            }    
+            
         }
 
         private void UpdateArrowRotation()

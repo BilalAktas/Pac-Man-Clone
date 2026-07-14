@@ -7,8 +7,14 @@ namespace Core
     public enum WallType
     {
         Empty = 0,
-        WallA = 1,
-        WallB = 2
+        TopLeft = 1,
+        TopRight = 2,
+        BottomLeft = 3,
+        BottomRight = 4,
+        Left = 5,
+        LeftFull = 6,
+        Right = 7,
+        RightFull = 8
     }
 
     public struct WallCell
@@ -25,6 +31,19 @@ namespace Core
         }
     }
 
+    [Serializable]
+    public struct EnemySpawnCell
+    {
+        public Vector2Int Cell;
+        public GhostConfig Type;
+
+        public EnemySpawnCell(Vector2Int cell, GhostConfig type)
+        {
+            Cell = cell;
+            Type = type;
+        }
+    }
+
     [CreateAssetMenu(fileName = "WallLevelDesignData", menuName = "ScriptableObjects/Wall Level Design Data")]
     public class WallLevelDesignData : ScriptableObject
     {
@@ -33,55 +52,58 @@ namespace Core
         [Min(1)] public int GridHeight = 9;
         [SerializeField] private Vector2 _nodeSize;
         [SerializeField] private Vector3 _worldPositionOffset;
-        [SerializeField] private GameObject _wallPrefabA;
-        [SerializeField] private GameObject _wallPrefabB;
+        [SerializeField] private GameObject[] _wallPrefab;
         [SerializeField] private GameObject _pointPrefab;
+        [SerializeField] private GameObject _powerPelletPrefab;
         [SerializeField] private GameObject _pacmanPrefab;
         [SerializeField] private GameObject _nodePrefab;
         [SerializeField] private GameObject _enemyPrefab;
 
-        
         [Header("Editor Icons")]
-        [SerializeField] private Texture2D _wallIconA;
-        [SerializeField] private Texture2D _wallIconB;
+        [SerializeField] private Texture2D[] _wallIcon;
+
+        [Header("Enemy Types")]
+        [SerializeField] private GhostConfig[] _enemyTypePalette;
 
         [Header("Spawns")]
         [SerializeField] private Vector2Int _playerSpawnCell = new Vector2Int(-1, -1);
-        [SerializeField] private List<Vector2Int> _enemySpawnCells = new List<Vector2Int>();
+        [SerializeField] private List<EnemySpawnCell> _enemySpawnCells = new List<EnemySpawnCell>();
         [SerializeField] private List<Vector2Int> _pointSpawnCells = new List<Vector2Int>();
+        [SerializeField] private List<Vector2Int> _powerPelletSpawnCells = new List<Vector2Int>();
 
         public Vector2Int GridSize => new Vector2Int(GridWidth, GridHeight);
         public Vector2 NodeSize => _nodeSize;
         public Vector3 WorldPositionOffset => _worldPositionOffset;
-        public GameObject WallPrefabA => _wallPrefabA;
-        public GameObject WallPrefabB => _wallPrefabB;
+        public GameObject[] WallPrefab => _wallPrefab;
         public GameObject PointPrefab => _pointPrefab;
+        public GameObject PowerPelletPrefab => _powerPelletPrefab;
         public GameObject PacmanPrefab => _pacmanPrefab;
         public GameObject NodePrefab => _nodePrefab;
-        public Texture2D WallIconA => _wallIconA;
-        public Texture2D WallIconB => _wallIconB;
+        public Texture2D[] WallIcon => _wallIcon;
         public GameObject EnemyPrefab => _enemyPrefab;
+        public GhostConfig[] EnemyTypePalette => _enemyTypePalette;
 
         public Texture2D GetIconFor(WallType type)
         {
-            return type switch
-            {
-                WallType.WallA => _wallIconA,
-                WallType.WallB => _wallIconB,
-                _ => null
-            };
+            return _wallIcon[(int)type];
+            // return type switch
+            // {
+            //     WallType.WallA => _wallIcon,
+            //     WallType.WallB => _wallIconB,
+            //     _ => null
+            // };
         }
 
         [SerializeField] private WallType[] _cells;
 
         public GameObject GetPrefabFor(WallType type)
         {
-            return type switch
-            {
-                WallType.WallA => _wallPrefabA,
-                WallType.WallB => _wallPrefabB,
-                _ => null
-            };
+            return _wallPrefab[(int)type];
+            // return type switch
+            // {
+            //     WallType.TopLeft => _wallPrefab[0],
+            //     _ => null
+            // };
         }
 
         public void EnsureSize()
@@ -194,20 +216,66 @@ namespace Core
 
         // ---- Enemy Spawns ----
 
-        public IReadOnlyList<Vector2Int> EnemySpawnCells => _enemySpawnCells;
+        public IReadOnlyList<EnemySpawnCell> EnemySpawnCells => _enemySpawnCells;
+
+        private int FindEnemySpawnIndex(int x, int y)
+        {
+            for (var i = 0; i < _enemySpawnCells.Count; i++)
+            {
+                if (_enemySpawnCells[i].Cell.x == x && _enemySpawnCells[i].Cell.y == y)
+                    return i;
+            }
+            return -1;
+        }
 
         public bool IsEnemySpawn(int x, int y)
         {
-            return _enemySpawnCells.Contains(new Vector2Int(x, y));
+            return FindEnemySpawnIndex(x, y) >= 0;
         }
 
-        public void ToggleEnemySpawn(int x, int y)
+        public GhostConfig GetEnemyTypeAt(int x, int y)
+        {
+            var idx = FindEnemySpawnIndex(x, y);
+            return idx >= 0 ? _enemySpawnCells[idx].Type : null;
+        }
+
+        /// <summary>
+        /// Hücredeki enemy spawn'ı, _enemyTypePalette içinde bir sonraki (veya dir=-1 ile önceki)
+        /// GhostConfig'e döngüsel olarak ilerletir. Palet biterse hücre boşa döner (spawn kaldırılır).
+        /// Palet boşsa/atanmamışsa sadece varlık (null type ile) toggle edilir.
+        /// </summary>
+        public void CycleEnemySpawn(int x, int y, int dir = 1)
         {
             var cell = new Vector2Int(x, y);
-            if (_enemySpawnCells.Contains(cell))
-                _enemySpawnCells.Remove(cell);
-            else
-                _enemySpawnCells.Add(cell);
+            var idx = FindEnemySpawnIndex(x, y);
+
+            if (_enemyTypePalette == null || _enemyTypePalette.Length == 0)
+            {
+                if (idx >= 0) _enemySpawnCells.RemoveAt(idx);
+                else _enemySpawnCells.Add(new EnemySpawnCell(cell, null));
+                return;
+            }
+
+            if (idx < 0)
+            {
+                var startIndex = dir >= 0 ? 0 : _enemyTypePalette.Length - 1;
+                _enemySpawnCells.Add(new EnemySpawnCell(cell, _enemyTypePalette[startIndex]));
+                return;
+            }
+
+            var current = _enemySpawnCells[idx].Type;
+            var currentIndex = Array.IndexOf(_enemyTypePalette, current);
+            var nextIndex = currentIndex + dir;
+
+            if (nextIndex < 0 || nextIndex >= _enemyTypePalette.Length)
+            {
+                _enemySpawnCells.RemoveAt(idx);
+                return;
+            }
+
+            var entry = _enemySpawnCells[idx];
+            entry.Type = _enemyTypePalette[nextIndex];
+            _enemySpawnCells[idx] = entry;
         }
 
         public void ClearEnemySpawns()
@@ -219,7 +287,7 @@ namespace Core
         {
             var result = new List<Vector3>();
             foreach (var cell in _enemySpawnCells)
-                result.Add(GetWorldPosition(cell.x, cell.y));
+                result.Add(GetWorldPosition(cell.Cell.x, cell.Cell.y));
             return result;
         }
 
@@ -250,6 +318,37 @@ namespace Core
         {
             var result = new List<Vector3>();
             foreach (var cell in _pointSpawnCells)
+                result.Add(GetWorldPosition(cell.x, cell.y));
+            return result;
+        }
+
+        // ---- PowerPellet Spawns ----
+
+        public IReadOnlyList<Vector2Int> PowerPelletSpawnCells => _powerPelletSpawnCells;
+
+        public bool IsPowerPelletSpawn(int x, int y)
+        {
+            return _powerPelletSpawnCells.Contains(new Vector2Int(x, y));
+        }
+
+        public void TogglePowerPelletSpawn(int x, int y)
+        {
+            var cell = new Vector2Int(x, y);
+            if (_powerPelletSpawnCells.Contains(cell))
+                _powerPelletSpawnCells.Remove(cell);
+            else
+                _powerPelletSpawnCells.Add(cell);
+        }
+
+        public void ClearPowerPelletSpawns()
+        {
+            _powerPelletSpawnCells.Clear();
+        }
+
+        public List<Vector3> GetPowerPelletSpawnWorldPositions()
+        {
+            var result = new List<Vector3>();
+            foreach (var cell in _powerPelletSpawnCells)
                 result.Add(GetWorldPosition(cell.x, cell.y));
             return result;
         }

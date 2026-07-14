@@ -52,17 +52,26 @@ namespace Core
                         node.SetCollectable(clone.GetComponentInChildren<ICollectable>());
                     }
                     
+                    if (_currentLevelDesignData.IsPowerPelletSpawn(gridPos.x, gridPos.y))
+                    {
+                        var clone = Instantiate(_currentLevelDesignData.PowerPelletPrefab, transform);
+                        clone.transform.localPosition = worldPos;
+                        node.SetCollectable(clone.GetComponentInChildren<ICollectable>());
+                    }
+                    
                     if (_currentLevelDesignData.IsEnemySpawn(gridPos.x, gridPos.y))
                     {
                         var clone = Instantiate(_currentLevelDesignData.EnemyPrefab, transform);
                         clone.transform.localPosition = worldPos;
                         clone.GetComponent<Character>().SetNode(node);
+                        clone.GetComponent<Ghost>().Config =
+                            _currentLevelDesignData.GetEnemyTypeAt(gridPos.x, gridPos.y);
                     }
                     
                     var wall = _currentLevelDesignData.IsWallCell(gridPos.x, gridPos.y);
                     if (wall.Type != WallType.Empty)
                     {
-                        var clone = Instantiate(wall.Type == WallType.WallA ? _currentLevelDesignData.WallPrefabA : _currentLevelDesignData.WallPrefabB, transform);
+                        var clone = Instantiate(_currentLevelDesignData.WallPrefab[(int)wall.Type], transform);
                         clone.transform.localPosition = worldPos;
                         node.SetWall();
                     }
@@ -80,7 +89,6 @@ namespace Core
         private bool IsPositionInBound(Vector2Int pos)
             => pos.x >= 0 && pos.x < _currentLevelDesignData.GridSize.x && pos.y >= 0 && pos.y < _currentLevelDesignData.GridSize.y;
         
-        public bool IsNodeClear(Vector2Int pos) => !_grid[pos.x, pos.y].Character;
 
         public List<Node> GetAllNodesByDirection(MoveDirection dir, int distance, Node baseNode)
         {

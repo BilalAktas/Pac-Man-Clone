@@ -8,32 +8,41 @@ namespace Core
         [HideInInspector] public MoveDirection CurrentDirection;
         [SerializeField] private Transform[] _eyes;
 
-        private SpriteRenderer _renderer;
-        public SpriteRenderer GetRenderer => _renderer;
-        
         private GhostStateMachine _stateMachine;
         public GhostStateMachine StateMachine => _stateMachine;
         public GhostStateEnum CurrentState => _stateMachine.CurrentStateEnum;
 
-        private void Awake()
-        {
-            _renderer = GetComponent<SpriteRenderer>();
-            
-            CharacterType = CharacterType.Ghost;
-            ChangeMoveSpeed(GhostStateEnum.Idle);
-            
-            _stateMachine = new GhostStateMachine();
-
-            _stateMachine.RegisterState(GhostStateEnum.Idle, new GhostIdleState(this));
-            _stateMachine.RegisterState(GhostStateEnum.Follow, new GhostFollowState(this));
-            _stateMachine.RegisterState(GhostStateEnum.Die, new GhostDieState(this));
-            
-            SetColor();
-        }
-
         private void Start()
         {
-            _stateMachine.Start(GhostStateEnum.Idle);
+            CharacterType = CharacterType.Ghost;
+            ChangeMoveSpeed(GhostStateEnum.Patrol);
+
+            _stateMachine = new GhostStateMachine();
+
+            _stateMachine.RegisterState(GhostStateEnum.Patrol, new GhostPatrolState(this));
+            _stateMachine.RegisterState(GhostStateEnum.Chase, new GhostChaseState(this));
+            _stateMachine.RegisterState(GhostStateEnum.Frightened, new GhostFrightenedState(this));
+            _stateMachine.RegisterState(GhostStateEnum.Die, new GhostDieState(this));
+
+            SetColor();
+            
+            _stateMachine.Start(GhostStateEnum.Patrol);
+            EventBus.Subscribe<OnBattleFinishedEvent>(OnBattleFinished);
+        }
+
+        private void OnDisable()
+        {
+            EventBus.Unsubscribe<OnBattleFinishedEvent>(OnBattleFinished);
+        }
+
+        private void OnBattleFinished(OnBattleFinishedEvent e)
+        {
+            if (e.Node.GridPosition != CurrentNode.GridPosition) return;
+            
+            if (e.Winner != this) {
+                SetNode(null);
+                gameObject.SetActive(false);
+            }
         }
 
         private void Update()
@@ -52,14 +61,15 @@ namespace Core
         {
             var speed = newState switch
             {
-                GhostStateEnum.Idle => Config.IdleMoveSpeed,
-                GhostStateEnum.Follow => Config.FollowMoveSpeed,
+                GhostStateEnum.Patrol => Config.IdleMoveSpeed,
+                GhostStateEnum.Chase => Config.ChaseMoveSpeed,
+                GhostStateEnum.Frightened=> Config.FrightenedMoveSpeed,
                 GhostStateEnum.Die => Config.DeathMoveSpeed
             };
-            
+
             SetMoveSpeed(speed);
         }
-        
+
         private void SetEyePosition()
         {
             foreach (var eye in _eyes)

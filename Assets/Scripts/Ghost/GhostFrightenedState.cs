@@ -2,18 +2,18 @@
 
 namespace Core
 {
-    public class GhostIdleState : GhostState
+    public class GhostFrightenedState : GhostState
     {
-        public GhostIdleState(Ghost ghost) : base(ghost)
+        public GhostFrightenedState(Ghost ghost) : base(ghost)
         {
         }
 
         private MoveDirection _currentMoveDirection;
-
+        
         public override void Enter()
         {
             _currentMoveDirection = (MoveDirection)Random.Range(1, 5);
-            Ghost.SetColor();
+            Ghost.GetRenderer.color = Color.blue;
         }
 
         public override void Update()
@@ -30,23 +30,11 @@ namespace Core
                 _currentMoveDirection = (MoveDirection)Random.Range(1, 5);
                 return;
             }
-
-            var nodes = Grid.Instance.GetAllNodesByDirection(_currentMoveDirection, 5, Ghost.CurrentNode);
-            for (var i = 0; i < nodes.Count; i++)
-            {
-                if (nodes[i].Character && nodes[i].Character.CharacterType == CharacterType.Pacman)
-                {
-                    Ghost.ChangeState(GhostStateEnum.Follow);
-                    if (Ghost.StateMachine.GetState(GhostStateEnum.Follow) is GhostFollowState followState)
-                        followState.GetCurrentPath(nodes.GetRange(0, i + 1));
-
-                    return;
-                }
-            }
         }
 
         public override void Exit()
         {
+            
         }
     }
 }
