@@ -1,5 +1,6 @@
 namespace Core
 {
+    public struct OnGhostDiedEvent : IEvent { } 
     public struct OnCollectPointEvent : IEvent
     {
         public int PointAmount;
@@ -11,6 +12,8 @@ namespace Core
     }
 
     public struct OnCollectPowerPelletEvent : IEvent{}
+    
+    public struct OnPowerPelletEffectFinishedEvent : IEvent{}
 
     public struct OnBattleStartedEvent : IEvent
     {

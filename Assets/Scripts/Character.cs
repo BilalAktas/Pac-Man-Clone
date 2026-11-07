@@ -19,15 +19,32 @@ namespace Core
 
         private void Awake()
         {
-            _renderer = GetComponent<SpriteRenderer>();
             _anim = GetComponent<Animator>();
+            SetAlive(true);
         }
         private SpriteRenderer _renderer;
-        public SpriteRenderer GetRenderer => _renderer;
+
+        public SpriteRenderer GetRenderer()
+        {
+            if (_renderer)
+                return _renderer;
+            
+            _renderer = GetComponent<SpriteRenderer>();
+            return _renderer;
+        }
+
+        public void SetRendererActive(bool state)
+        {
+            GetRenderer().enabled = state;   
+        }
+        
         [HideInInspector] public bool Moving;
         [HideInInspector] public Vector3 StartPosition;
         [HideInInspector] public Node NextNode;
         [HideInInspector] public CharacterType CharacterType;
+        public bool IsAlive { get; private set; }
+        public void SetAlive(bool state) => IsAlive = state;
+        
         private float _moveTimer;
         private float _moveSpeed;
         protected void SetMoveSpeed(float speed) => _moveSpeed = speed;
@@ -53,6 +70,8 @@ namespace Core
 
         public void Move()
         {
+            if (GameManager.Instance.GameState == GameState.Idle) return;
+            
             _moveTimer += Time.deltaTime;
             var progress = Mathf.Clamp01(_moveTimer / _moveSpeed);
             transform.position = Vector3.Lerp(StartPosition, NextNode.WorldPosition, progress);

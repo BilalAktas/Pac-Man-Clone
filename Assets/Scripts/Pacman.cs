@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Core
@@ -11,6 +10,7 @@ namespace Core
         private Transform _dirArrow;
         private Node _lastTrackedNode;
         private bool _inBattle;
+
 
         private void GetDirectionByInput()
         {
@@ -31,6 +31,7 @@ namespace Core
             _dirArrow = transform.GetChild(0);
 
             EventBus.Subscribe<OnBattleFinishedEvent>(OnBattleFinished);
+            
         }
 
         private void OnDisable()
@@ -43,7 +44,8 @@ namespace Core
             //if (e.Node.GridPosition != CurrentNode.GridPosition) return;
 
             _inBattle = false;
-
+            //
+          
             if (e.Winner != this)
             {
                 SetNode(null);
@@ -51,12 +53,17 @@ namespace Core
             }
             else
             {
-           
+                Invoke(nameof(OnKilledGhost), 1);
                 EventBus.Raise(new OnCollectPointEvent()
                 {
                     PointAmount = 200
                 });
             }
+        }
+
+        private void OnKilledGhost()
+        {
+            SetRendererActive(true);
         }
 
         private void Update()
@@ -103,9 +110,10 @@ namespace Core
             {
                 foreach (var character in CurrentNode.Characters)
                 {
-                    if (character.CharacterType == CharacterType.Ghost)
+                    if (character.CharacterType == CharacterType.Ghost && character.IsAlive)
                     {
                         _inBattle = true;
+                        SetRendererActive(false);
                         EventBus.Raise(new OnBattleStartedEvent
                         {
                             Pacman = this,

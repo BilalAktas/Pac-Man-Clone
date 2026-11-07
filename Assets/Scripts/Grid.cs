@@ -1,12 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Core
 {
     public class Grid : Singleton<Grid>
     {
+        [SerializeField] private WallMapVisualSettings _wallMapVisualSettings;
+        [SerializeField] private SpriteRenderer _wallMapRenderer;
+        
 		private Node[,] _grid;
-        [SerializeField] private WallLevelDesignData _currentLevelDesignData;
+        public WallLevelDesignData CurrentLevelDesignData;
         
         private static readonly Dictionary<MoveDirection, Vector2Int> _directionOffsets = new()
         {
@@ -16,67 +20,90 @@ namespace Core
             { MoveDirection.Right, new Vector2Int(1, 0) },
         };
         
-        private void Start()
+        private void Awake()
         {
             CreateGrid();
+            RenderWallMap();
         }
 
         private void CreateGrid()
         {
             _grid = Helpers.CreateGrid(
-                _currentLevelDesignData.GridSize,
+                CurrentLevelDesignData.GridSize,
                 origin: Vector3.zero,
-                nodeSize: _currentLevelDesignData.NodeSize,
-                worldOffset: _currentLevelDesignData.WorldPositionOffset,
+                nodeSize: CurrentLevelDesignData.NodeSize,
+                worldOffset: CurrentLevelDesignData.WorldPositionOffset,
                 createNode: (worldPos, gridPos) =>
                 {
-                    var clone = Instantiate(_currentLevelDesignData.NodePrefab, transform);
+                    var clone = Instantiate(CurrentLevelDesignData.NodePrefab, transform);
                     clone.transform.localPosition = worldPos;
 
                     return new Node(worldPos, gridPos, clone);
                 },
                 afterCreate: (node, worldPos, gridPos) =>
                 {
-                    if (_currentLevelDesignData.PlayerSpawnCell.x == gridPos.x && _currentLevelDesignData.PlayerSpawnCell.y == gridPos.y)
+                    if (CurrentLevelDesignData.PlayerSpawnCell.x == gridPos.x && CurrentLevelDesignData.PlayerSpawnCell.y == gridPos.y)
                     {
-                        var clone = Instantiate(_currentLevelDesignData.PacmanPrefab, transform);
+                        var clone = Instantiate(CurrentLevelDesignData.PacmanPrefab, transform);
                         clone.transform.localPosition = worldPos;
                         var character = clone.GetComponent<Character>();
                         character.SetNode(node);
                     }
 
-                    if (_currentLevelDesignData.IsPointSpawn(gridPos.x, gridPos.y))
+                    if (CurrentLevelDesignData.IsPointSpawn(gridPos.x, gridPos.y))
                     {
-                        var clone = Instantiate(_currentLevelDesignData.PointPrefab, transform);
+                        var clone = Instantiate(CurrentLevelDesignData.PointPrefab, transform);
                         clone.transform.localPosition = worldPos;
                         node.SetCollectable(clone.GetComponentInChildren<ICollectable>());
                     }
                     
-                    if (_currentLevelDesignData.IsPowerPelletSpawn(gridPos.x, gridPos.y))
+                    if (CurrentLevelDesignData.IsPowerPelletSpawn(gridPos.x, gridPos.y))
                     {
-                        var clone = Instantiate(_currentLevelDesignData.PowerPelletPrefab, transform);
+                        var clone = Instantiate(CurrentLevelDesignData.PowerPelletPrefab, transform);
                         clone.transform.localPosition = worldPos;
                         node.SetCollectable(clone.GetComponentInChildren<ICollectable>());
                     }
                     
-                    if (_currentLevelDesignData.IsEnemySpawn(gridPos.x, gridPos.y))
+                    if (CurrentLevelDesignData.IsEnemySpawn(gridPos.x, gridPos.y))
                     {
-                        var clone = Instantiate(_currentLevelDesignData.EnemyPrefab, transform);
+                        var clone = Instantiate(CurrentLevelDesignData.EnemyPrefab, transform);
                         clone.transform.localPosition = worldPos;
                         clone.GetComponent<Character>().SetNode(node);
                         clone.GetComponent<Ghost>().Config =
-                            _currentLevelDesignData.GetEnemyTypeAt(gridPos.x, gridPos.y);
+                            CurrentLevelDesignData.GetEnemyTypeAt(gridPos.x, gridPos.y);
                     }
                     
-                    var wall = _currentLevelDesignData.IsWallCell(gridPos.x, gridPos.y);
-                    if (wall.Type != WallType.Empty)
+                    if (CurrentLevelDesignData.IsWall(gridPos.x, gridPos.y))
                     {
-                        var clone = Instantiate(_currentLevelDesignData.WallPrefab[(int)wall.Type], transform);
-                        clone.transform.localPosition = worldPos;
                         node.SetWall();
                     }
                 }
             );
+        }
+        
+        private void RenderWallMap()
+        {
+            var tex = WallTextureGenerator.Generate(CurrentLevelDesignData, _wallMapVisualSettings);
+
+            if (_wallMapRenderer == null)
+            {
+                var go = new GameObject("WallMap");
+                go.transform.SetParent(transform, false);
+                _wallMapRenderer = go.AddComponent<SpriteRenderer>();
+            }
+
+            var nodeSize = CurrentLevelDesignData.NodeSize;
+            var pixelsPerUnit = _wallMapVisualSettings.PixelsPerCell / nodeSize.x;
+
+            _wallMapRenderer.sprite = Sprite.Create(
+                tex,
+                new Rect(0, 0, tex.width, tex.height),
+                Vector2.zero,
+                pixelsPerUnit);
+            
+
+            _wallMapRenderer.transform.position =
+                _grid[0, 0].WorldPosition - new Vector3(nodeSize.x, nodeSize.y, 0f) * 0.5f;
         }
 
         public Node GetNodeByDirection(Node currentNode, MoveDirection dir)
@@ -87,7 +114,7 @@ namespace Core
         }
         
         private bool IsPositionInBound(Vector2Int pos)
-            => pos.x >= 0 && pos.x < _currentLevelDesignData.GridSize.x && pos.y >= 0 && pos.y < _currentLevelDesignData.GridSize.y;
+            => pos.x >= 0 && pos.x < CurrentLevelDesignData.GridSize.x && pos.y >= 0 && pos.y < CurrentLevelDesignData.GridSize.y;
         
 
         public List<Node> GetAllNodesByDirection(MoveDirection dir, int distance, Node baseNode)
@@ -125,6 +152,97 @@ namespace Core
             if (dx == 1 && dy == 0) return MoveDirection.Right;
 
             return MoveDirection.None;
+        }
+
+        public MoveDirection GetOppositeDirection(MoveDirection dir)
+        {
+            return dir switch
+            {
+                MoveDirection.Up => MoveDirection.Down,
+                MoveDirection.Down => MoveDirection.Up,
+                MoveDirection.Left => MoveDirection.Right,
+                MoveDirection.Right => MoveDirection.Left,
+                _ => MoveDirection.None
+            };
+        }
+        
+         private int ManhattanDistance(Vector2Int currentPos, Vector2Int targetPos) {
+            return (Mathf.Abs(currentPos.x - targetPos.x)) + (Mathf.Abs(currentPos.y - targetPos.y));
+        }
+         
+        private List<Node> GetNeighbors(Vector2Int pos)
+        {
+            var _neighbors = new List<Node>();
+            foreach (var dir in new Vector2Int[]
+                     {
+                         Vector2Int.right,
+                         Vector2Int.left,
+                         Vector2Int.up,
+                         Vector2Int.down
+                     })
+            {
+                var cPos = pos + dir;
+                if(IsPositionInBound(cPos))
+                    _neighbors.Add(_grid[cPos.x, cPos.y]);
+            }
+
+            return _neighbors;
+        }
+
+        public List<Node> GetPath(Vector2Int startPos, Vector2Int targetPos)
+        {
+            var gCost = new Dictionary<Vector2Int, int>();
+            var parent = new Dictionary<Vector2Int, Vector2Int>();
+            var closed = new HashSet<Vector2Int>();
+            var open = new List<Vector2Int>();
+
+            gCost[startPos] = 0;
+            open.Add(startPos);
+
+            int F(Vector2Int p) => gCost[p] + ManhattanDistance(p, targetPos);
+
+            while (open.Count > 0)
+            {
+                var current = open[0];
+                foreach (var p in open)
+                {
+                    if (F(p) < F(current) ||
+                        (F(p) == F(current) &&
+                         ManhattanDistance(p, targetPos) < ManhattanDistance(current, targetPos)))
+                        current = p;
+                }
+
+                if (current == targetPos)
+                {
+                    var path = new List<Node> { _grid[current.x, current.y] };
+                    while (parent.TryGetValue(current, out var prev))
+                    {
+                        path.Add(_grid[prev.x, prev.y]);
+                        current = prev;
+                    }
+                    path.Reverse();
+                    return path;
+                }
+
+                open.Remove(current);
+                closed.Add(current);
+
+                foreach (var neighbor in GetNeighbors(current))
+                {
+                    var np = neighbor.GridPosition;
+                    if (neighbor.IsWall || closed.Contains(np)) continue;
+
+                    var g = gCost[current] + 1;
+                    if (!gCost.TryGetValue(np, out var oldG) || g < oldG)
+                    {
+                        gCost[np] = g;
+                        parent[np] = current;
+                        if (!open.Contains(np)) open.Add(np);
+                    }
+                }
+            }
+
+            return new List<Node>();
         }
     }
 }

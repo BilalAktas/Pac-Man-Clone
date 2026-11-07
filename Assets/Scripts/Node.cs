@@ -13,12 +13,23 @@ namespace Core
         
         public ICollectable Collectable { get; private set; }
         
+        public float GCost { get; private set; }
+        public float HCost { get; private set; }
+        public float FCost => GCost + HCost;
+        public Node Parent { get; private set; }
+        
+        
         public Node(Vector3 worldPosition, Vector2Int gridPosition, GameObject visual)
         {
             WorldPosition = worldPosition;
             GridPosition = gridPosition;
-            Visual = visual;
+            if(visual) Visual = visual;
             Characters = new List<Character>();
+            
+            
+            SetGCost(float.MaxValue);
+            SetHCost(0);
+            SetParentNode(null);
         }
 
         public void AddCharacter(Character character) => Characters.Add(character);
@@ -35,5 +46,10 @@ namespace Core
         }
 
         public bool IsWalkable => !IsWall;
+
+        public void SetGCost(float cost) => GCost = cost;
+        public void SetHCost(float cost) => HCost = cost;
+
+        public void SetParentNode(Node node) => Parent = node;
     }
 }

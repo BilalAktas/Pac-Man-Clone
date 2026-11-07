@@ -22,7 +22,7 @@ namespace Core
             _trail.Clear();
             _currentTarget = null;
             _followTimer = 0;
-            _baseColor = Ghost.GetRenderer.color;
+            _baseColor = Ghost.GetRenderer().color;
             
             EventBus.Subscribe<OnPacmanNodeChangedEvent>(OnPacmanNodeChanged);
             EventBus.Subscribe<OnCollectPowerPelletEvent>(OnPowerPelletCollected);
@@ -54,7 +54,7 @@ namespace Core
                 _colorLoopTimer = 0;
                 var color = _dark ? _baseColor * 0.5f : _baseColor;
                 color.a = 1;
-                Ghost.GetRenderer.color = color;
+                Ghost.GetRenderer().color = color;
             }
             
             if (_followTimer >= Ghost.Config.FollowDuration)

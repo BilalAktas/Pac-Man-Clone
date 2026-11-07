@@ -15,7 +15,7 @@ MonoBehaviour:
   _idleMoveSpeed: 0.2
   _chaseMoveSpeed: 0.175
   _frightenedMoveSpeed: 0.4
-  _deathMoveSpeed: 0.15
+  _deathMoveSpeed: 0.1
   _ghostColor: {r: 0.72803843, g: 0.20392154, b: 0.7764706, a: 1}
   _followColorLoopDuration: 0.15
   _followDuration: 10

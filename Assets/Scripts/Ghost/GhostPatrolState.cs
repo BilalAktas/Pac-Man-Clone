@@ -13,7 +13,7 @@ namespace Core
         public override void Enter()
         {
             _currentMoveDirection = (MoveDirection)Random.Range(1, 5);
-            Ghost.SetColor();
+            Ghost.SetBaseColor();
             
             EventBus.Subscribe<OnCollectPowerPelletEvent>(OnPowerPelletCollected);
         }

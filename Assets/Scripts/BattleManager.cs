@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using UnityEngine;
 
 namespace Core
@@ -12,6 +12,9 @@ namespace Core
     public class BattleManager : MonoBehaviour
     {
         private PowerPelletState _powerPelletState;
+        private float _pelletTimer;
+        private const float PELLET_DURATION = 15f;
+        
         private void Start()
         {
             EventBus.Subscribe<OnCollectPowerPelletEvent>(OnCollectPowerPellet);
@@ -26,7 +29,20 @@ namespace Core
 
         private void OnCollectPowerPellet(OnCollectPowerPelletEvent e)
         {
+            _pelletTimer = 0;
             _powerPelletState = PowerPelletState.On;
+        }
+
+        private void Update()
+        {
+            if (_powerPelletState == PowerPelletState.Off) return;
+            
+            _pelletTimer += Time.deltaTime;
+            if (_pelletTimer >= PELLET_DURATION)
+            {
+                _powerPelletState = PowerPelletState.Off;
+                EventBus.Raise(new OnPowerPelletEffectFinishedEvent());
+            }
         }
 
         private void OnBattleStarted(OnBattleStartedEvent e)

@@ -7,6 +7,7 @@ namespace Core
         public GhostConfig Config;
         [HideInInspector] public MoveDirection CurrentDirection;
         [SerializeField] private Transform[] _eyes;
+    
 
         private GhostStateMachine _stateMachine;
         public GhostStateMachine StateMachine => _stateMachine;
@@ -24,11 +25,13 @@ namespace Core
             _stateMachine.RegisterState(GhostStateEnum.Frightened, new GhostFrightenedState(this));
             _stateMachine.RegisterState(GhostStateEnum.Die, new GhostDieState(this));
 
-            SetColor();
+            SetBaseColor();
             
             _stateMachine.Start(GhostStateEnum.Patrol);
             EventBus.Subscribe<OnBattleFinishedEvent>(OnBattleFinished);
+            
         }
+        
 
         private void OnDisable()
         {
@@ -37,11 +40,13 @@ namespace Core
 
         private void OnBattleFinished(OnBattleFinishedEvent e)
         {
+            if (CurrentState == GhostStateEnum.Die) return;
+            
             if (e.Node.GridPosition != CurrentNode.GridPosition) return;
             
-            if (e.Winner != this) {
-                SetNode(null);
-                gameObject.SetActive(false);
+            if (e.Winner != this)
+            {
+                ChangeState(GhostStateEnum.Die);
             }
         }
 
@@ -85,6 +90,9 @@ namespace Core
             }
         }
 
-        public void SetColor() => GetRenderer.color = Config.GhostColor;
+        public void SetBaseColor() => GetRenderer().color = Config.GhostColor;
+        public void SetColor(Color c) => GetRenderer().color = c;
+
+     
     }
 }

@@ -8,29 +8,17 @@ namespace Core
     [CustomEditor(typeof(WallLevelDesignData))]
     public class WallLevelDesignDataEditor : Editor
     {
-        private enum PaintMode
-        {
-            Wall,
-            PlayerSpawn,
-            EnemySpawn,
-            PointSpawn,
-            PowerPellet
-        }
-
-        private static readonly WallType[] _cycleOrder =
-        {
-            WallType.Empty, WallType.TopLeft, WallType.TopRight, WallType.BottomLeft, WallType.BottomRight, WallType.Left, WallType.LeftFull, WallType.Right, WallType.RightFull
-        };
+        private enum PaintMode { Wall, PlayerSpawn, EnemySpawn, EnemyBase, PointSpawn, PowerPellet }
 
         private const float CELL_SIZE = 32f;
         private const float CELL_PAD = 10f;
+
+        private static readonly Color WallColor = new Color(0.25f, 0.55f, 1f, 1f);
 
         private PaintMode _paintMode = PaintMode.Wall;
 
         private SerializedProperty _nodeSize;
         private SerializedProperty _worldPositionOffset;
-        private SerializedProperty _wallPrefab;
-        private SerializedProperty _wallIcon;
         private SerializedProperty _nodePrefab;
         private SerializedProperty _pacmanPrefab;
         private SerializedProperty _pointPrefab;
@@ -42,8 +30,6 @@ namespace Core
         {
             _nodeSize = serializedObject.FindProperty("_nodeSize");
             _worldPositionOffset = serializedObject.FindProperty("_worldPositionOffset");
-            _wallPrefab = serializedObject.FindProperty("_wallPrefab");
-            _wallIcon = serializedObject.FindProperty("_wallIcon");
             _nodePrefab = serializedObject.FindProperty("_nodePrefab");
             _pacmanPrefab = serializedObject.FindProperty("_pacmanPrefab");
             _pointPrefab = serializedObject.FindProperty("_pointPrefab");
@@ -63,8 +49,6 @@ namespace Core
 
             EditorGUILayout.PropertyField(_nodeSize);
             EditorGUILayout.PropertyField(_worldPositionOffset);
-            EditorGUILayout.PropertyField(_wallPrefab);
-            EditorGUILayout.PropertyField(_wallIcon);
             EditorGUILayout.PropertyField(_nodePrefab);
             EditorGUILayout.PropertyField(_pacmanPrefab);
             EditorGUILayout.PropertyField(_pointPrefab);
@@ -81,18 +65,14 @@ namespace Core
                 Undo.RecordObject(data, "Resize Main Grid");
                 data.GridWidth = newWidth;
                 data.GridHeight = newHeight;
-
                 data.EnsureSize();
                 EditorUtility.SetDirty(data);
             }
 
             data.EnsureSize();
 
-            GUILayout.Space(8);
-            DrawLegend(data);
-
             GUILayout.Space(10);
-            DrawModeToolbar(data);
+            DrawModeToolbar();
 
             GUILayout.Space(8);
             EditorGUILayout.LabelField("Main Grid (Cells)  (0,0 = bottom-left)", EditorStyles.boldLabel);
@@ -101,10 +81,9 @@ namespace Core
             {
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    if (GUILayout.Button("Fill Empty")) PaintFillMain(data, WallType.Empty);
-                    // if (GUILayout.Button("Fill Wall A")) PaintFillMain(data, WallType.WallA);
-                    // if (GUILayout.Button("Fill Wall B")) PaintFillMain(data, WallType.WallB);
-                    if (GUILayout.Button("Fill Random")) PaintRandomMain(data);
+                    if (GUILayout.Button("Fill Empty")) PaintFill(data, false);
+                    if (GUILayout.Button("Fill All Wall")) PaintFill(data, true);
+                    if (GUILayout.Button("Fill Random")) PaintRandom(data);
                 }
             }
             else if (_paintMode == PaintMode.EnemySpawn)
@@ -113,14 +92,11 @@ namespace Core
                     "Sol tık: sıradaki Enemy tipine geç (palet biterse boşa döner).\nSağ tık: bir önceki tipe dön.",
                     MessageType.Info);
 
-                using (new EditorGUILayout.HorizontalScope())
+                if (GUILayout.Button("Clear Enemy Spawns"))
                 {
-                    if (GUILayout.Button("Clear Enemy Spawns"))
-                    {
-                        Undo.RecordObject(data, "Clear Enemy Spawns");
-                        data.ClearEnemySpawns();
-                        EditorUtility.SetDirty(data);
-                    }
+                    Undo.RecordObject(data, "Clear Enemy Spawns");
+                    data.ClearEnemySpawns();
+                    EditorUtility.SetDirty(data);
                 }
 
                 GUILayout.Space(4);
@@ -128,38 +104,38 @@ namespace Core
             }
             else if (_paintMode == PaintMode.PlayerSpawn)
             {
-                using (new EditorGUILayout.HorizontalScope())
+                if (GUILayout.Button("Clear Player Spawn"))
                 {
-                    if (GUILayout.Button("Clear Player Spawn"))
-                    {
-                        Undo.RecordObject(data, "Clear Player Spawn");
-                        data.ClearPlayerSpawn();
-                        EditorUtility.SetDirty(data);
-                    }
+                    Undo.RecordObject(data, "Clear Player Spawn");
+                    data.ClearPlayerSpawn();
+                    EditorUtility.SetDirty(data);
+                }
+            }
+            else if (_paintMode == PaintMode.EnemyBase)
+            {
+                if (GUILayout.Button("Clear Enemy Base"))
+                {
+                    Undo.RecordObject(data, "Clear Enemy Base");
+                    data.ClearEnemyBase();
+                    EditorUtility.SetDirty(data);
                 }
             }
             else if (_paintMode == PaintMode.PointSpawn)
             {
-                using (new EditorGUILayout.HorizontalScope())
+                if (GUILayout.Button("Clear Point Spawns"))
                 {
-                    if (GUILayout.Button("Clear Point Spawns"))
-                    {
-                        Undo.RecordObject(data, "Clear Point Spawns");
-                        data.ClearPointSpawns();
-                        EditorUtility.SetDirty(data);
-                    }
+                    Undo.RecordObject(data, "Clear Point Spawns");
+                    data.ClearPointSpawns();
+                    EditorUtility.SetDirty(data);
                 }
             }
             else if (_paintMode == PaintMode.PowerPellet)
             {
-                using (new EditorGUILayout.HorizontalScope())
+                if (GUILayout.Button("Clear PowerPellet Spawns"))
                 {
-                    if (GUILayout.Button("Clear PowerPellet Spawns"))
-                    {
-                        Undo.RecordObject(data, "Clear PowerPellet Spawns");
-                        data.ClearPowerPelletSpawns();
-                        EditorUtility.SetDirty(data);
-                    }
+                    Undo.RecordObject(data, "Clear PowerPellet Spawns");
+                    data.ClearPowerPelletSpawns();
+                    EditorUtility.SetDirty(data);
                 }
             }
 
@@ -171,20 +147,23 @@ namespace Core
             EditorGUILayout.LabelField(
                 data.HasPlayerSpawn ? $"Player Spawn: {data.PlayerSpawnCell}" : "Player Spawn: (not set)",
                 EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField(
+                data.HasEnemyBase ? $"Enemy Base: {data.EnemyBaseCell}" : "Enemy Base: (not set)",
+                EditorStyles.miniBoldLabel);
             EditorGUILayout.LabelField($"Enemy Spawns: {data.EnemySpawnCells.Count}", EditorStyles.miniBoldLabel);
             EditorGUILayout.LabelField($"Point Spawns: {data.PointSpawnCells.Count}", EditorStyles.miniBoldLabel);
             EditorGUILayout.LabelField($"PowerPellet Spawns: {data.PowerPelletSpawnCells.Count}", EditorStyles.miniBoldLabel);
         }
 
-        private void DrawModeToolbar(WallLevelDesignData data)
+        private void DrawModeToolbar()
         {
             EditorGUILayout.LabelField("Paint Mode", EditorStyles.miniBoldLabel);
-
             using (new EditorGUILayout.HorizontalScope())
             {
                 DrawModeButton(PaintMode.Wall, "Wall");
                 DrawModeButton(PaintMode.PlayerSpawn, "Player Spawn");
                 DrawModeButton(PaintMode.EnemySpawn, "Enemy Spawn");
+                DrawModeButton(PaintMode.EnemyBase, "Enemy Base");
                 DrawModeButton(PaintMode.PointSpawn, "Point Spawn");
                 DrawModeButton(PaintMode.PowerPellet, "PowerPellet Spawn");
             }
@@ -195,33 +174,23 @@ namespace Core
             var isActive = _paintMode == mode;
             var prevColor = GUI.backgroundColor;
             if (isActive) GUI.backgroundColor = new Color(0.35f, 0.65f, 1f, 1f);
-
-            if (GUILayout.Button(label, GUILayout.Height(24)))
-                _paintMode = mode;
-
+            if (GUILayout.Button(label, GUILayout.Height(24))) _paintMode = mode;
             GUI.backgroundColor = prevColor;
         }
 
-        private static void PaintRandomMain(WallLevelDesignData data)
+        private static void PaintRandom(WallLevelDesignData data)
         {
             Undo.RecordObject(data, "Randomize Main Grid");
-
             for (var y = 0; y < data.GridHeight; y++)
-            {
                 for (var x = 0; x < data.GridWidth; x++)
-                {
-                    var randomType = (WallType)Random.Range(0, _cycleOrder.Length);
-                    data.Set(x, y, randomType);
-                }
-            }
-
+                    data.SetWall(x, y, Random.value > 0.5f);
             EditorUtility.SetDirty(data);
         }
 
-        private static void PaintFillMain(WallLevelDesignData data, WallType t)
+        private static void PaintFill(WallLevelDesignData data, bool value)
         {
             Undo.RecordObject(data, "Fill Main Grid");
-            data.Fill(t);
+            data.Fill(value);
             EditorUtility.SetDirty(data);
         }
 
@@ -233,46 +202,35 @@ namespace Core
                 {
                     GUILayout.Space(2);
                     for (var x = 0; x < data.GridWidth; x++)
-                    {
                         DrawCell(data, x, y);
-                    }
                 }
-
                 GUILayout.Space(CELL_PAD);
             }
         }
 
         private void DrawCell(WallLevelDesignData data, int x, int y)
         {
-            var r = GUILayoutUtility.GetRect(CELL_SIZE, CELL_SIZE, GUILayout.Width(CELL_SIZE),
-                GUILayout.Height(CELL_SIZE));
+            var r = GUILayoutUtility.GetRect(CELL_SIZE, CELL_SIZE, GUILayout.Width(CELL_SIZE), GUILayout.Height(CELL_SIZE));
 
-            var current = data.Get(x, y);
+            var isWall = data.IsWall(x, y);
 
-            // Boş hücreler için sabit koyu arka plan
-            EditorGUI.DrawRect(r, new Color(0.18f, 0.18f, 0.18f, 1f));
-
-            var icon = data.GetIconFor(current);
-            if (icon != null)
-            {
-                var padded = new Rect(r.x + 2, r.y + 2, r.width - 4, r.height - 4);
-                GUI.DrawTexture(padded, icon, ScaleMode.ScaleToFit);
-            }
+            // Wall hücreleri dolgu rengiyle, boş hücreler koyu arka planla gösterilir
+            EditorGUI.DrawRect(r, isWall ? WallColor : new Color(0.18f, 0.18f, 0.18f, 1f));
 
             var isPlayerSpawn = data.IsPlayerSpawn(x, y);
             var isEnemySpawn = data.IsEnemySpawn(x, y);
+            var isEnemyBase = data.IsEnemyBase(x, y);
             var isPointSpawn = data.IsPointSpawn(x, y);
             var isPowerPelletSpawn = data.IsPowerPelletSpawn(x, y);
             var enemyType = isEnemySpawn ? data.GetEnemyTypeAt(x, y) : null;
             var enemyIndex = enemyType != null ? System.Array.IndexOf(data.EnemyTypePalette, enemyType) : -1;
 
-            // Kenarlıklar: her spawn tipi kendi rengiyle, aynı anda birden fazla gösterilebilir
             if (isPlayerSpawn) DrawBorder(r, new Color(0.3f, 0.6f, 1f, 1f), 2f);
             if (isEnemySpawn) DrawBorder(r, new Color(1f, 0.3f, 0.3f, 1f), 2f);
+            if (isEnemyBase) DrawBorder(r, new Color(0.75f, 0.4f, 1f, 1f), 2f);
             if (isPointSpawn) DrawBorder(r, new Color(1f, 0.85f, 0.2f, 1f), 2f);
             if (isPowerPelletSpawn) DrawBorder(r, new Color(.7f, 0.85f, 0.2f, 1f), 2f);
 
-            // Enemy tipi ikonu ortada küçük thumbnail olarak
             if (isEnemySpawn && enemyType != null)
             {
                 var enemyIcon = AssetPreview.GetMiniThumbnail(enemyType);
@@ -281,26 +239,16 @@ namespace Core
                     var padded = new Rect(r.x + 6, r.y + 6, r.width - 12, r.height - 12);
                     GUI.DrawTexture(padded, enemyIcon, ScaleMode.ScaleToFit);
                 }
-
-                // hover ile tam isim (GhostConfig asset adı) tooltip olarak gösterilir
                 GUI.Label(r, new GUIContent(string.Empty, enemyType.name));
             }
 
-            // Her spawn tipi kendi köşesinde ayrı gösteriliyor, çakışma yok
-            if (isPlayerSpawn)
-                DrawCornerLabel(r, "P", new Color(0.35f, 0.7f, 1f), TextAnchor.UpperLeft);
+            if (isPlayerSpawn) DrawCornerLabel(r, "P", new Color(0.35f, 0.7f, 1f), TextAnchor.UpperLeft);
+            if (isEnemySpawn) DrawCornerLabel(r, enemyIndex >= 0 ? $"E{enemyIndex + 1}" : "E?", new Color(1f, 0.4f, 0.4f), TextAnchor.UpperRight);
+            if (isPointSpawn) DrawCornerLabel(r, "$", new Color(1f, 0.9f, 0.3f), TextAnchor.LowerLeft);
+            if (isPowerPelletSpawn) DrawCornerLabel(r, "PP", new Color(0.8f, 0.95f, 0.3f), TextAnchor.LowerRight);
+            if (isEnemyBase) DrawCornerLabel(r, "EB", new Color(0.85f, 0.55f, 1f), TextAnchor.MiddleCenter);
 
-            if (isEnemySpawn)
-                DrawCornerLabel(r, enemyIndex >= 0 ? $"E{enemyIndex + 1}" : "E?",
-                    new Color(1f, 0.4f, 0.4f), TextAnchor.UpperRight);
-
-            if (isPointSpawn)
-                DrawCornerLabel(r, "$", new Color(1f, 0.9f, 0.3f), TextAnchor.LowerLeft);
-
-            if (isPowerPelletSpawn)
-                DrawCornerLabel(r, "PP", new Color(0.8f, 0.95f, 0.3f), TextAnchor.LowerRight);
-
-            HandleCellInput(data, r, x, y, current);
+            HandleCellInput(data, r, x, y);
 
             GUILayout.Space(CELL_PAD);
         }
@@ -313,34 +261,30 @@ namespace Core
                 fontSize = 9,
                 normal = { textColor = color }
             };
-            // köşe metinlerinin birbirine değmemesi için hafif iç boşluk
             var padded = new Rect(r.x + 1, r.y + 1, r.width - 2, r.height - 2);
             GUI.Label(padded, text, style);
         }
 
-        private void HandleCellInput(WallLevelDesignData data, Rect r, int x, int y, WallType current)
+        private void HandleCellInput(WallLevelDesignData data, Rect r, int x, int y)
         {
             var evt = Event.current;
-
             if (evt.type != EventType.MouseDown || !r.Contains(evt.mousePosition))
                 return;
 
-            // Sol tık: ileri, Sağ tık: geri
             var dir = evt.button == 1 ? -1 : 1;
-
-            OnCellClicked(data, x, y, current, dir);
+            OnCellClicked(data, x, y, dir);
 
             evt.Use();
             EditorUtility.SetDirty(data);
         }
 
-        private void OnCellClicked(WallLevelDesignData data, int x, int y, WallType current, int dir)
+        private void OnCellClicked(WallLevelDesignData data, int x, int y, int dir)
         {
             switch (_paintMode)
             {
                 case PaintMode.Wall:
-                    Undo.RecordObject(data, "Paint Main Cell");
-                    data.Set(x, y, Cycle(current, dir));
+                    Undo.RecordObject(data, "Toggle Wall");
+                    data.ToggleWall(x, y);
                     break;
 
                 case PaintMode.PlayerSpawn:
@@ -351,6 +295,11 @@ namespace Core
                 case PaintMode.EnemySpawn:
                     Undo.RecordObject(data, "Cycle Enemy Spawn");
                     data.CycleEnemySpawn(x, y, dir);
+                    break;
+
+                case PaintMode.EnemyBase:
+                    Undo.RecordObject(data, "Toggle Enemy Base");
+                    data.ToggleEnemyBase(x, y);
                     break;
 
                 case PaintMode.PointSpawn:
@@ -373,35 +322,6 @@ namespace Core
             EditorGUI.DrawRect(new Rect(r.xMax - thickness, r.y, thickness, r.height), color);
         }
 
-        private static void DrawLegend(WallLevelDesignData data)
-        {
-            EditorGUILayout.LabelField("Click a cell to cycle: Empty → Wall A → Wall B", EditorStyles.miniBoldLabel);
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                DrawLegendIcon("Empty", null);
-                DrawLegendIcon("TopLeft", data.WallIcon[1]);
-                DrawLegendIcon("TopRight", data.WallIcon[2]);
-                DrawLegendIcon("BottomLeft", data.WallIcon[3]);
-                DrawLegendIcon("BottomRight", data.WallIcon[4]);
-                DrawLegendIcon("Left", data.WallIcon[5]);
-                DrawLegendIcon("LeftFull", data.WallIcon[6]);
-                DrawLegendIcon("Right", data.WallIcon[7]);
-                DrawLegendIcon("RightFull", data.WallIcon[8]);
-            }
-        }
-
-        private static void DrawLegendIcon(string label, Texture2D icon)
-        {
-            using (new EditorGUILayout.HorizontalScope(GUILayout.Width(90)))
-            {
-                var r = GUILayoutUtility.GetRect(18, 18, GUILayout.Width(18), GUILayout.Height(18));
-                EditorGUI.DrawRect(r, new Color(0.18f, 0.18f, 0.18f, 1f));
-                if (icon != null) GUI.DrawTexture(r, icon, ScaleMode.ScaleToFit);
-                GUILayout.Label(label, EditorStyles.miniLabel);
-            }
-        }
-
         private static void DrawEnemyPaletteLegend(WallLevelDesignData data)
         {
             var palette = data.EnemyTypePalette;
@@ -411,8 +331,7 @@ namespace Core
                 return;
             }
 
-            EditorGUILayout.LabelField("Enemy Palette (hücredeki E{n} numarası bu listeye karşılık gelir)",
-                EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField("Enemy Palette (hücredeki E{n} numarası bu listeye karşılık gelir)", EditorStyles.miniBoldLabel);
 
             for (var i = 0; i < palette.Length; i++)
             {
@@ -431,23 +350,6 @@ namespace Core
                     GUILayout.Label($"E{i + 1}  —  {name}", EditorStyles.miniLabel);
                 }
             }
-        }
-
-        private static WallType Cycle(WallType current, int dir)
-        {
-            var idx = 0;
-            for (var i = 0; i < _cycleOrder.Length; i++)
-            {
-                if (_cycleOrder[i] == current)
-                {
-                    idx = i;
-                    break;
-                }
-            }
-
-            idx = (idx + dir) % _cycleOrder.Length;
-            if (idx < 0) idx += _cycleOrder.Length;
-            return _cycleOrder[idx];
         }
     }
 }

@@ -40,7 +40,6 @@ namespace Core
             }
 
             _currentState?.Exit();
-
             CurrentStateEnum = newStateEnum;
             _currentState = newState;
             _currentState.Enter();
