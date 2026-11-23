@@ -49,6 +49,12 @@ namespace Core
         {
             _currentState?.Update();
         }
+        
+        public void Stop()
+        {
+            _currentState?.Exit();
+            _currentState = null;
+        }
 
         public GhostState GetState(GhostStateEnum stateEnum)
         {

@@ -22,6 +22,8 @@ namespace Core
             _trail.Clear();
             _currentTarget = null;
             _followTimer = 0;
+            _colorLoopTimer = 0;
+            _dark = false;
             _baseColor = Ghost.GetRenderer().color;
             
             EventBus.Subscribe<OnPacmanNodeChangedEvent>(OnPacmanNodeChanged);

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace Core
@@ -12,6 +11,13 @@ namespace Core
 		private Node[,] _grid;
         public WallLevelDesignData CurrentLevelDesignData;
         
+        public int TotalCollectables { get; private set; }
+
+        private readonly List<Ghost> _ghosts = new();
+        
+        public Pacman Pacman { get; private set; }
+        public IReadOnlyList<Ghost> Ghosts => _ghosts;
+        
         private static readonly Dictionary<MoveDirection, Vector2Int> _directionOffsets = new()
         {
             { MoveDirection.Up,    new Vector2Int(0, 1) },
@@ -23,7 +29,16 @@ namespace Core
         private void Awake()
         {
             CreateGrid();
+            CountCollectables();
             RenderWallMap();
+        }
+
+        private void CountCollectables()
+        {
+            TotalCollectables = 0;
+            foreach (var node in _grid)
+                if (!node.IsWall && node.Collectable != null)
+                    TotalCollectables++;
         }
 
         private void CreateGrid()
@@ -46,8 +61,10 @@ namespace Core
                     {
                         var clone = Instantiate(CurrentLevelDesignData.PacmanPrefab, transform);
                         clone.transform.localPosition = worldPos;
-                        var character = clone.GetComponent<Character>();
-                        character.SetNode(node);
+                        var pacman = clone.GetComponent<Pacman>();
+                        pacman.SetNode(node);
+                        pacman.SetSpawnNode(node);
+                        Pacman = pacman;
                     }
 
                     if (CurrentLevelDesignData.IsPointSpawn(gridPos.x, gridPos.y))
@@ -68,9 +85,11 @@ namespace Core
                     {
                         var clone = Instantiate(CurrentLevelDesignData.EnemyPrefab, transform);
                         clone.transform.localPosition = worldPos;
-                        clone.GetComponent<Character>().SetNode(node);
-                        clone.GetComponent<Ghost>().Config =
-                            CurrentLevelDesignData.GetEnemyTypeAt(gridPos.x, gridPos.y);
+                        var ghost = clone.GetComponent<Ghost>();
+                        ghost.SetNode(node);
+                        ghost.SetSpawnNode(node);
+                        ghost.Config = CurrentLevelDesignData.GetEnemyTypeAt(gridPos.x, gridPos.y);
+                        _ghosts.Add(ghost);
                     }
                     
                     if (CurrentLevelDesignData.IsWall(gridPos.x, gridPos.y))

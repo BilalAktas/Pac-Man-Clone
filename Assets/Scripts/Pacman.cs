@@ -9,18 +9,21 @@ namespace Core
         private MoveDirection _currentMoveDirection;
         private Transform _dirArrow;
         private Node _lastTrackedNode;
-        private bool _inBattle;
-
+        
+        public MoveDirection CurrentMoveDirection => _currentMoveDirection;
 
         private void GetDirectionByInput()
         {
-            if (Keyboard.current.wKey.wasPressedThisFrame)
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame)
                 _targetMoveDirection = MoveDirection.Up;
-            if (Keyboard.current.sKey.wasPressedThisFrame)
+            if (keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame)
                 _targetMoveDirection = MoveDirection.Down;
-            if (Keyboard.current.aKey.wasPressedThisFrame)
+            if (keyboard.aKey.wasPressedThisFrame || keyboard.leftArrowKey.wasPressedThisFrame)
                 _targetMoveDirection = MoveDirection.Left;
-            if (Keyboard.current.dKey.wasPressedThisFrame)
+            if (keyboard.dKey.wasPressedThisFrame || keyboard.rightArrowKey.wasPressedThisFrame)
                 _targetMoveDirection = MoveDirection.Right;
         }
 
@@ -31,43 +34,43 @@ namespace Core
             _dirArrow = transform.GetChild(0);
 
             EventBus.Subscribe<OnBattleFinishedEvent>(OnBattleFinished);
-            
+            EventBus.Subscribe<OnRoundResetEvent>(OnRoundReset);
         }
 
         private void OnDisable()
         {
             EventBus.Unsubscribe<OnBattleFinishedEvent>(OnBattleFinished);
+            EventBus.Unsubscribe<OnRoundResetEvent>(OnRoundReset);
         }
 
         private void OnBattleFinished(OnBattleFinishedEvent e)
         {
-            //if (e.Node.GridPosition != CurrentNode.GridPosition) return;
+            SetRendererActive(false);
 
-            _inBattle = false;
-            //
-          
-            if (e.Winner != this)
-            {
-                SetNode(null);
-                Time.timeScale = 0f;
-            }
-            else
-            {
-                Invoke(nameof(OnKilledGhost), 1);
-                EventBus.Raise(new OnCollectPointEvent()
-                {
-                    PointAmount = 200
-                });
-            }
+            if (e.PacmanWon)
+                Invoke(nameof(ShowAfterKill), GameManager.Instance.GhostDeathFreezeDuration);
         }
 
-        private void OnKilledGhost()
+        private void ShowAfterKill() => SetRendererActive(true);
+
+        private void OnRoundReset(OnRoundResetEvent e) => ResetToSpawn();
+
+        public override void ResetToSpawn()
         {
+            CancelInvoke(nameof(ShowAfterKill));
+            _targetMoveDirection = MoveDirection.None;
+            _currentMoveDirection = MoveDirection.None;
+            transform.right = Vector3.right;
+
+            base.ResetToSpawn();
             SetRendererActive(true);
         }
 
         private void Update()
         {
+            if (GameManager.Instance.GameState != GameState.Play) return;
+            if (CurrentNode == null) return;
+
             if (CurrentNode != _lastTrackedNode)
             {
                 _lastTrackedNode = CurrentNode;
@@ -76,8 +79,8 @@ namespace Core
 
             if (CurrentNode.Collectable != null)
                 CurrentNode.Collect();
-
-            CheckGhostCollision();
+            
+            if (GameManager.Instance.GameState != GameState.Play) return;
 
             GetDirectionByInput();
             UpdateArrowRotation();
@@ -100,32 +103,6 @@ namespace Core
                 _targetMoveDirection = MoveDirection.None;
                 State = CharacterState.Idle;
             }
-        }
-
-        private void CheckGhostCollision()
-        {
-            if (_inBattle) return;
-
-            if (CurrentNode != null)
-            {
-                foreach (var character in CurrentNode.Characters)
-                {
-                    if (character.CharacterType == CharacterType.Ghost && character.IsAlive)
-                    {
-                        _inBattle = true;
-                        SetRendererActive(false);
-                        EventBus.Raise(new OnBattleStartedEvent
-                        {
-                            Pacman = this,
-                            Ghost = character,
-                            Node = CurrentNode
-                        });
-
-                        break;
-                    }
-                }
-            }    
-            
         }
 
         private void UpdateArrowRotation()

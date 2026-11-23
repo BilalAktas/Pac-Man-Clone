@@ -20,9 +20,4 @@
         Pacman,
         Ghost
     }
-    
-    public class Enums
-    {
-        
-    }
 }

@@ -35,7 +35,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3207633652154067115
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -92,6 +92,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!1 &2738057623881091803
 GameObject:
   m_ObjectHideFlags: 0
@@ -127,7 +128,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &2747918231690705503
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -184,6 +185,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &4044544088085854639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -196,3 +198,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28a37414fc1749f6bcd48d6f5efc775b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Core.Point
+  _gameConstants: {fileID: 11400000, guid: 549c48650723e1740a83687d536b3acc, type: 2}

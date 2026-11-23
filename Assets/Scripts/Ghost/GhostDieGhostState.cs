@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Core
@@ -19,7 +18,11 @@ namespace Core
             Ghost.SetAlive(false);
             Ghost.SetRendererActive(false);
             Ghost.SetColor(Color.white);
-            var path = Grid.Instance.GetPath(Ghost.CurrentNode.GridPosition, Grid.Instance.CurrentLevelDesignData.EnemyBaseCell);
+            
+            _roadToBase.Clear();
+            _currentTarget = null;
+            var startNode = Ghost.Moving ? Ghost.NextNode : Ghost.CurrentNode;
+            var path = Grid.Instance.GetPath(startNode.GridPosition, Grid.Instance.CurrentLevelDesignData.EnemyBaseCell);
             foreach (var n in path)
             {
                 _roadToBase.Enqueue(n);
@@ -40,20 +43,15 @@ namespace Core
                 return;
             }
             
-            if (_currentTarget == null && _roadToBase.Count > 0)
+            while (_currentTarget == null || _currentTarget == Ghost.CurrentNode)
+            {
+                if (_roadToBase.Count == 0)
+                {
+                    Ghost.ChangeState(GhostStateEnum.Patrol);
+                    return;
+                }
+
                 _currentTarget = _roadToBase.Dequeue();
-            
-            if (_currentTarget == null)
-            {
-                Ghost.ChangeState(GhostStateEnum.Patrol);
-                return;
-            } 
-            
-            if (_currentTarget == Ghost.CurrentNode)
-            {
-                _currentTarget = null;
-                Ghost.ChangeState(GhostStateEnum.Patrol);
-                return;
             }
             
             var dir = Grid.Instance.GetDirectionBetweenNodes(Ghost.CurrentNode, _currentTarget);
@@ -81,6 +79,7 @@ namespace Core
             Ghost.SetAlive(true);
             Ghost.SetRendererActive(true);
             _roadToBase.Clear();
+            _currentTarget = null;
         }
     }
 }

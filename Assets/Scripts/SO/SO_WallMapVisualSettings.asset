@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ca8171b88718408197bffecff56e3b4d, type: 3}
-  m_Name: WallMapVisualSettings
+  m_Name: SO_WallMapVisualSettings
   m_EditorClassIdentifier: Assembly-CSharp::Core.WallMapVisualSettings
   PixelsPerCell: 32
   BackgroundColor: {r: 0, g: 0, b: 0, a: 0}

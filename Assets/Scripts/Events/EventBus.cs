@@ -1,11 +1,17 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Core
 {
     public class EventBus
     {
         private static readonly Dictionary<Type, List<Delegate>> Subscribers = new();
+        
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => Subscribers.Clear();
+
+        public static void Clear() => Subscribers.Clear();
 
         public static void Subscribe<T>(Action<T> callback) where T : IEvent
         {
@@ -34,11 +40,16 @@ namespace Core
             {
                 foreach (var callback in list.ToArray())
                 {
-                    ((Action<T>)callback)?.Invoke(eventData);
+                    try
+                    {
+                        ((Action<T>)callback)?.Invoke(eventData);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogException(ex);
+                    }
                 }
             }
-            else
-                UnityEngine.Debug.LogWarning($"No subscribers found for {type.Name}");
         }
     }
 }

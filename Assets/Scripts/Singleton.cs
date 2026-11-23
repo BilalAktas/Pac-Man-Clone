@@ -4,19 +4,22 @@ namespace Core
 {
     public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
     {
-        private static object _lock = new object();
         private static T _instance;
 
         public static T Instance
         {
             get
             {
-                lock (_lock)
+                if (_instance == null)
                 {
-                    if (_instance == null) _instance = (T)FindObjectOfType(typeof(T));
-
-                    return _instance;
+#if UNITY_2023_1_OR_NEWER
+                    _instance = FindFirstObjectByType<T>();
+#else
+                    _instance = FindObjectOfType<T>();
+#endif
                 }
+
+                return _instance;
             }
         }
     }

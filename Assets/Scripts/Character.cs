@@ -13,7 +13,7 @@ namespace Core
             set
             {
                 _state = value;
-                _anim?.SetInteger(_stateId, (int)value);
+                if(CharacterType == CharacterType.Pacman) _anim?.SetInteger(_stateId, (int)value);
             }
         }
 
@@ -50,6 +50,23 @@ namespace Core
         protected void SetMoveSpeed(float speed) => _moveSpeed = speed;
 
         public Node CurrentNode { get; private set; }
+        
+        public Node SpawnNode { get; private set; }
+        public void SetSpawnNode(Node node) => SpawnNode = node;
+        
+        public virtual void ResetToSpawn()
+        {
+            Moving = false;
+            _moveTimer = 0;
+            NextNode = null;
+            SetAlive(true);
+            State = CharacterState.Idle;
+
+            if (SpawnNode == null) return;
+
+            transform.position = SpawnNode.WorldPosition;
+            SetNode(SpawnNode);
+        }
 
 
         public bool TryMoveInDirection(MoveDirection dir)
@@ -70,7 +87,7 @@ namespace Core
 
         public void Move()
         {
-            if (GameManager.Instance.GameState == GameState.Idle) return;
+            if (GameManager.Instance.GameState != GameState.Play) return;
             
             _moveTimer += Time.deltaTime;
             var progress = Mathf.Clamp01(_moveTimer / _moveSpeed);

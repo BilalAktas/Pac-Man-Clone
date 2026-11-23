@@ -10,6 +10,7 @@ namespace Core
         private void Start()
         {
             EventBus.Subscribe<OnCollectPointEvent>(OnCollectPoint);
+            Refresh();
         }
 
         private void OnDestroy()
@@ -20,7 +21,13 @@ namespace Core
         private void OnCollectPoint(OnCollectPointEvent e)
         {
             _currentScore += e.PointAmount;
-            _scoreText.text = _currentScore.ToString();
+            Refresh();
+        }
+
+        private void Refresh()
+        {
+            if (_scoreText != null)
+                _scoreText.text = _currentScore.ToString();
         }
     }
 }
